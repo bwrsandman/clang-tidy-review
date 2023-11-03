@@ -60,7 +60,12 @@ class PRReview(TypedDict):
 
 
 def build_clang_tidy_warnings(
-    line_filter: Optional[str], build_dir: str, clang_tidy_checks: str, clang_tidy_binary: str, config_file: str, files: List[str]
+    line_filter: Optional[str],
+    build_dir: str,
+    clang_tidy_checks: str,
+    clang_tidy_binary: str,
+    config_file: str,
+    files: List[str],
 ) -> None:
     """Run clang-tidy on the given files and save output into FIXES_FILE"""
 
@@ -68,12 +73,7 @@ def build_clang_tidy_warnings(
 
     print(f"Using config: {config}")
 
-    args = [
-        f"-p={build_dir}",
-        config,
-        files,
-        f"--export-fixes={FIXES_FILE}"
-    ]
+    args = [f"-p={build_dir}", config, files, f"--export-fixes={FIXES_FILE}"]
 
     if line_filter is not None:
         args.append(f"-line-filter={line_filter}")
@@ -205,8 +205,10 @@ class PullRequest:
     def get_pr_branch_files(self) -> List[str]:
         """Get a list of all files in the branch associated with the pull request."""
 
-        branch_tree = self.repo.get_git_tree(sha=self.pull_request.head.ref, recursive='/' != '').tree
-        return [file.path for file in branch_tree if file.type == 'blob']
+        branch_tree = self.repo.get_git_tree(
+            sha=self.pull_request.head.ref, recursive="/" != ""
+        ).tree
+        return [file.path for file in branch_tree if file.type == "blob"]
 
     def get_pr_comments(self):
         """Download the PR review comments using the comfort-fade preview headers"""
