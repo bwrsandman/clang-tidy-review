@@ -60,7 +60,7 @@ class PRReview(TypedDict):
 
 
 def build_clang_tidy_warnings(
-    line_filter, build_dir, clang_tidy_checks, clang_tidy_binary, config_file, files
+    line_filter: Optional[str], build_dir: str, clang_tidy_checks: str, clang_tidy_binary: str, config_file: str, files: List[str]
 ) -> None:
     """Run clang-tidy on the given files and save output into FIXES_FILE"""
 
@@ -68,7 +68,17 @@ def build_clang_tidy_warnings(
 
     print(f"Using config: {config}")
 
-    command = f"{clang_tidy_binary} -p={build_dir} {config} -line-filter={line_filter} {files} --export-fixes={FIXES_FILE}"
+    args = [
+        f"-p={build_dir}",
+        config,
+        files,
+        f"--export-fixes={FIXES_FILE}"
+    ]
+
+    if line_filter is not None:
+        args.append(f"-line-filter={line_filter}")
+
+    command = f"{clang_tidy_binary} {' '.join(args)}"
 
     start = datetime.datetime.now()
     try:
@@ -191,6 +201,12 @@ class PullRequest:
         # their own diff_line_no range
         diff = [unidiff.PatchSet(str(file))[0] for file in unidiff.PatchSet(diffs)]
         return diff
+
+    def get_pr_branch_files(self) -> List[str]:
+        """Get a list of all files in the branch associated with the pull request."""
+
+        branch_tree = self.repo.get_git_tree(sha=self.pull_request.head.ref, recursive='/' != '').tree
+        return [file.path for file in branch_tree if file.type == 'blob']
 
     def get_pr_comments(self):
         """Download the PR review comments using the comfort-fade preview headers"""
@@ -717,21 +733,21 @@ def create_review_file(
     return review
 
 
-def filter_files(diff, include: List[str], exclude: List[str]) -> List:
-    changed_files = [filename.target_file[2:] for filename in diff]
-    files = []
+def filter_files(file_list, include: List[str], exclude: List[str]) -> List:
+    filtered_files = []
     for pattern in include:
-        files.extend(fnmatch.filter(changed_files, pattern))
-        print(f"include: {pattern}, file list now: {files}")
+        filtered_files.extend(fnmatch.filter(file_list, pattern))
+        print(f"include: {pattern}, file list now: {filtered_files}")
     for pattern in exclude:
-        files = [f for f in files if not fnmatch.fnmatch(f, pattern)]
-        print(f"exclude: {pattern}, file list now: {files}")
+        filtered_files = [f for f in filtered_files if not fnmatch.fnmatch(f, pattern)]
+        print(f"exclude: {pattern}, file list now: {filtered_files}")
 
-    return files
+    return filtered_files
 
 
 def create_review(
     pull_request: PullRequest,
+    use_line_filers: bool,
     build_dir: str,
     clang_tidy_checks: str,
     clang_tidy_binary: str,
@@ -747,7 +763,11 @@ def create_review(
     diff = pull_request.get_pr_diff()
     print(f"\nDiff from GitHub PR:\n{diff}\n")
 
-    files = filter_files(diff, include, exclude)
+    if use_line_filers:
+        files = [filename.target_file[2:] for filename in diff]
+    else:
+        files = pull_request.get_pr_branch_files()
+    files = filter_files(files, include, exclude)
 
     if files == []:
         print("No files to check!")
@@ -755,16 +775,16 @@ def create_review(
 
     print(f"Checking these files: {files}", flush=True)
 
-    line_ranges = get_line_ranges(diff, files)
-    if line_ranges == "[]":
-        print("No lines added in this PR!")
-        return None
-
-    print(f"Line filter for clang-tidy:\n{line_ranges}\n")
+    if use_line_filers:
+        line_ranges = get_line_ranges(diff, files)
+        if line_ranges == "[]":
+            print("No lines added in this PR!")
+            return None
+        print(f"Line filter for clang-tidy:\n{line_ranges}\n")
 
     # Run clang-tidy with the configured parameters and produce the CLANG_TIDY_FIXES file
     build_clang_tidy_warnings(
-        shlex.quote(line_ranges),
+        shlex.quote(line_ranges) if use_line_filers else None,
         build_dir,
         clang_tidy_checks,
         clang_tidy_binary,

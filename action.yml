@@ -61,6 +61,10 @@ inputs:
     description: "Use annotations instead of comments. See README for limitations on annotations"
     required: false
     default: false
+  use_line_filters:
+    description: "Speed up check by running clang-tidy only on changed lines instead of entire codebase."
+    required: false
+    default: true
   pr:
     default: ${{ github.event.pull_request.number }}
   repo:
@@ -86,5 +90,6 @@ runs:
     - --cmake-command='${{ inputs.cmake_command }}'
     - --max-comments=${{ inputs.max_comments }}
     - --lgtm-comment-body='${{ inputs.lgtm_comment_body }}'
-    - --split_workflow=${{ inputs.split_workflow }}
+    - --split-workflow=${{ inputs.split_workflow }}
     - --annotations=${{ inputs.annotations }}
+    - --use-line-filters=${{ inputs.use_line_filters }}

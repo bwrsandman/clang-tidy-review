@@ -92,7 +92,7 @@ def main():
         default='clang-tidy review says "All clean, LGTM! :+1:"',
     )
     parser.add_argument(
-        "--split_workflow",
+        "--split-workflow",
         help=(
             "Only generate but don't post the review, leaving it for the second workflow. "
             "Relevant when receiving PRs from forks that don't have the required permissions to post reviews."
@@ -105,6 +105,12 @@ def main():
         help="Use annotations instead of comments",
         type=bool_argument,
         default=False,
+    )
+    parser.add_argument(
+        "--use-line-filters",
+        help="Run only on changed lines.",
+        type=bool_argument,
+        default=True,
     )
     parser.add_argument("--token", help="github auth token")
     parser.add_argument(
@@ -147,6 +153,7 @@ def main():
 
     review = create_review(
         pull_request,
+        args.use_line_filters,
         args.build_dir,
         args.clang_tidy_checks,
         args.clang_tidy_binary,

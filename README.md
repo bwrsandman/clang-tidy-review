@@ -117,6 +117,9 @@ at once, so `clang-tidy-review` will only attempt to post the first
 - `annotations`: Use Annotations instead of comments. A maximum of 10
   annotations can be written fully, the rest will be summarised. This is a
   limitation of the GitHub API.
+- `use_line_filters`: Speed up check by running clang-tidy only on changed
+  lines instead of entire codebase. It is useful to disable if changes to
+  rules are applied.
 
 ## Outputs
 
