@@ -122,12 +122,14 @@ def build_clang_tidy_warnings(
     start = datetime.datetime.now()
     try:
         with message_group(f"Running:\n\t{args}"):
+            env = dict(os.environ)
+            env['USER'] = username
             subprocess.run(
                 args,
                 capture_output=True,
                 check=True,
                 encoding="utf-8",
-                env={"USER": username},
+                env=env,
             )
     except subprocess.CalledProcessError as e:
         print(
@@ -1017,9 +1019,14 @@ def get_line_ranges(diff, files):
 
     line_filter_json = []
     for name, lines in lines_by_file.items():
-        # On windows, unidiff has forward slashes but clang-tidy expects backslashes
-        name = os.path.join(*name.split("/"))
         line_filter_json.append({"name": name, "lines": lines})
+        # On windows, unidiff has forward slashes but cl.exe expects backslashes.
+        # However, clang.exe on windows expects forward slashes.
+        # Adding a copy of the line filters with backslashes allows for both cl.exe and clang.exe to work.
+        if os.path.sep == "\\":
+            # Converts name to backslashes for the cl.exe line filter.
+            name = os.path.join(*name.split("/"))
+            line_filter_json.append({"name": name, "lines": lines})
     return json.dumps(line_filter_json, separators=(",", ":"))
 
 
